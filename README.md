@@ -6,7 +6,7 @@ Personal Blog
 - `jbake -b -s` (version was 2.6.4)
 
 # How to deploy
-- `jbake ./ output -b`
+- `jbake -b`
 - push to git
 
 # Todo
