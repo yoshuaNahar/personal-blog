@@ -1,0 +1,222 @@
+<!doctype html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, shrink-to-fit=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="description" content=""/>
+  <meta name="author" content=""/>
+  <meta name="keywords" content=""/>
+  <meta name="generator" content="JBake"/>
+
+  <title>Yoshua Nahar - Blog</title>
+
+  <link rel="shortcut icon" href="..//favicon.ico"/>
+
+  <!-- styles -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
+        integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css"
+        integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.13.1/styles/default.min.css">
+  <link href="../css/style.css" rel="stylesheet"/>
+</head>
+<body>
+<!-- page header -->
+<script src="nulljs/index.js"></script>
+
+<header style="background-image: url(../img/01-dispatcherservlet-programming-1896158_1920.jpg);">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-12
+                  col-md-12">
+        <div id="heading_container">
+          <h1 id="post_heading">Spring&#39;s Implementation of the Front Controller Pattern</h1>
+          <small id="post_sub_heading">
+            <span>23 January 2019</span> |
+            Tags: <span> <span>Java</span> </span><span> <span>Spring</span> </span>
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+<!-- main content -->
+<div class="container">
+  <div class="row">
+    <div class="col-lg-9
+                col-md-9
+                col-sm-12
+                col-xs-12
+                postlist-container">
+      <div id="article">
+<h3 id="Introduction">Introduction</h3>
+<p>
+  The Dispatcher Servlet is the glue that holds a servlet container (like Tomcat or Jetty) and Spring together.
+  In this post I’ll attempt to broadly explain:
+</p>
+<ul>
+  <li>- How the dispatcher servlet works?</li>
+  <li>- How the dispatcher servlet is different from plain old servlets?</li>
+  <li>- What is the Front Controller pattern?</li>
+</ul>
+
+<h3 id="Servlets Refresher">Servlets Refresher</h3>
+<p>
+  The Servlet API makes it possible to work with HTTP in Java. It is implemented by web servers like Tomcat and Jetty. The fact that they handle
+  dynamic content with servlets makes them a servlet container.
+</p>
+<p>
+  Inside the containers for each incoming HTTP request a HttpServletRequest and
+  HttpServletResponse is created. The HttpServletRequest contains the actual request data and the HttpServletResponse exists for the developers to
+  write the dynamic response data into.
+</p>
+<p>
+  Each servlet is mapped to a single path, but each path can make use of multiple methods like GET, POST, PUT, etc. So if the web app runs on the
+  root path `url:port//servlet1` it is mapped to a single servlet. For a better explanation on servlets check out this explanation on stackoverflow.
+  Servlets are also capable dealing of with sessions/cookies and file uploads, but lets ignore that for now.
+</p>
+
+<h3 id="Dispatcher Servlet">Dispatcher Servlet</h3>
+<p>
+  So how does the Dispatcher Servlet fit in the picture? The dispatcher servlet is part of the SpringMVC library that is build on top of servlets.
+  The dispatcher servlet in fact extended from HttpServlet. It does pre-processing and postprocessing of the request and response, like mapping to
+  and from java objects and extracting HTTP parameters for you.
+</p>
+<p>Furthermore, it delegates the requests to the correct Spring controller, based on
+  the value inside the mapping annotation (@RequestMapping, etc), in addition to other things.
+</p>
+
+<h3 id="Example of Spring vs Servlets">Example of Spring vs Servlets</h3>
+<pre>
+<code class="java">@PostMapping
+public Book createBook(@RequestBody Book book) {
+  logger.info("createBook: {}", book);
+  return service.createBook(book);
+}</code>
+</pre>
+<pre>
+<code class="java">@Override
+protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+  logger.info("doPost: {}", req.getServletPath());
+
+  // transform request data to object
+  Book book = objectMapper.readValue(req.getInputStream(), Book.class);
+  logger.info("request body: {}", book);
+
+  // create book
+  Book createdBook = service.createBook(book);
+
+  // turn the object to a String
+  String responseData = objectMapper.writeValueAsString(createdBook);
+
+  // set the response content type to json
+  resp.setContentType("application/json");
+  // add the book as json string to the response body
+  resp.getWriter().println(responseData);
+}</code>
+</pre>
+
+<h3 id="Front Controller">Front Controller</h3>
+<p>
+  The dispatcher servlet is based on the Front Controller pattern. In one sentence, the pattern entails that a single controller is used to handle
+  all requests. In the example above, the Spring controller also makes use of an ObjectMapper, but that is configured and included in the dispatcher
+  servlet. It allows methods to be written like this: <code>Product getProduct(String productId);</code> instead of
+  <code>void doGet(HttpServletRequest req, HttpServletResponse res);</code>.
+</p>
+<p>
+  The first method is arguably a lot easier to test, the method will contain less boilerplate and the method
+  parameters are simpler objects, not HttpServletRequest and HttpServletResponse. So the two benefits of using this pattern is that there is central
+  servlet that contains all configuration where all requests and responses go through. The result is reduced boilerplate and simpler methods to test.
+  (https://en.wikipedia.org/wiki/Front_controller#Benefits_and_liabilities)
+</p>
+
+<h3 id="Summary">Summary</h3>
+<p>
+  In the end it is a trade-off. Choose to learning Spring configuration or write Servlets boilerplate code. The Java community has decided long ago
+  that the first solution is preferred because of the two main reasons above. It is less error prone and the amount of configuration and annotations
+  you need to learn isn’t much.
+</p>
+<p>
+  Remember that the dispatcher servlet is based on the Front Controller pattern, that it is a plain old servlet that processes requests and responses,
+  delegates them, and contains a lot of <code>@EnableMVC</code> configuration.
+</p>
+<p>
+  To learn SpringMVC my advice is to create a small application with plain servlets to understand how they work, and swiftly move on to enjoy the
+  benefits of Spring. Cheers!
+</p>
+</div>
+      <!-- pagination -->
+      <nav id="blog_pagination">
+        <a href="/">
+          <button id="pagination_button" type="button" class="btn btn-dark">
+            Back
+          </button>
+        </a>
+      </nav>
+    </div>
+    <!-- sidebar container -->
+    <div class="col-lg-3
+                col-md-3
+                col-sm-12
+                col-xs-12
+                sidebar-container">
+      <aside>
+        <hr class="hidden-sm
+                   hidden-xs">
+        <section id="content" class="mb-3 rounded">
+          <h5>Content</h5>
+          <ul>
+            <li><a href="#Introduction">Introduction</a></li>
+          </ul>
+          <ul>
+            <li><a href="#Servlets Refresher">Servlets Refresher</a></li>
+          </ul>
+          <ul>
+            <li><a href="#Dispatcher Servlet">Dispatcher Servlet</a></li>
+          </ul>
+          <ul>
+            <li><a href="#Example of Spring vs Servlets">Example of Spring vs Servlets</a></li>
+          </ul>
+          <ul>
+            <li><a href="#Front Controller">Front Controller</a></li>
+          </ul>
+          <ul>
+            <li><a href="#Summary">Summary</a></li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+  </div>
+</div>
+<!-- footer -->
+<footer id="blog_footer">
+
+  <ul class="social_buttons">
+    <li class="social_button">
+      <a href="https://github.com/yoshuaNahar"><i class="fab fa-github"></i></a>
+    </li>
+    <li class="social_button">
+      <a href="https://www.linkedin.com/in/yoshua-nahar-b61a33aa"><i class="fab fa-linkedin"></i></a>
+    </li>
+  </ul>
+  <small>
+    Yoshua Nahar's Blog |
+    &copy <span id="current_year">current-year</span> |
+    source code on <a href="https://github.com/yoshuaNahar">GitHub</a> |
+    Baked with <a href="http://jbake.org">JBake <span>v2.6.4</span></a></small>
+
+  <!-- javascript -->
+  <script src="../js/index.js"></script>
+
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.13.1/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+</footer>
+</body>
+</html>
